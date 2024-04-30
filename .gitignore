@@ -1,0 +1,6 @@
+src/main
+src/main.o
+test/main
+test/calico_log.txt
+test/valgrind_log.txt
+.DS_Store
