@@ -89,12 +89,7 @@ struct Schedule {
     }
 };
 
-bool compareEndTimes(const IntervalPair &a, const IntervalPair &b)
-{
-    return a.end_time < b.end_time;
-}
-
-int findLatestNonConflict(const vector<pair<IntervalPair, int>> &intervals, int n)
+int find_latest_non_conflict(const vector<pair<IntervalPair, int>> &intervals, int n)
 {
     for (int i = n - 1; i >= 0; i--) {
         if (intervals[i].first.end_time <= intervals[n].first.start_time) {
@@ -136,7 +131,7 @@ vector<Schedule> weighted_interval_scheduling(vector<Schedule> schedules)
 
         for (int i = 1; i < n; i++) {
             int incl_prof = intervals_with_priority[i].second;
-            int l = findLatestNonConflict(intervals_with_priority, i);
+            int l = find_latest_non_conflict(intervals_with_priority, i);
             if (l != -1) {
                 incl_prof += dp[l];
             }
@@ -151,7 +146,7 @@ vector<Schedule> weighted_interval_scheduling(vector<Schedule> schedules)
             if (i == 0 || dp[i] != dp[i - 1]) {
                 best_intervals.push_back(intervals_with_priority[i].first);
                 best_room_no.push_back(interval_to_room[floor_name][intervals_with_priority[i].first]);
-                i = findLatestNonConflict(intervals_with_priority, i);
+                i = find_latest_non_conflict(intervals_with_priority, i);
             } else {
                 i--;
             }
@@ -357,7 +352,7 @@ int main(int argc, char *argv[])
         }
         const vector<Schedule> &schedules = floor_to_schedules[floor_name];
 
-        auto it = std::find_if(schedules.begin(), schedules.end(),
+        auto it = find_if(schedules.begin(), schedules.end(),
             [&floor_name](const Schedule &schedule) {
                 return schedule.floor_name == floor_name;
             });
