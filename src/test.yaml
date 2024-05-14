@@ -1,9 +1,9 @@
 - compile:
-    run: g++ ../src/main.cpp -o ../src/main -Wall -Werror
+    run: g++ main.cpp -o main -Wall -Werror
     blocker: true
 
 - case_1:
-    run: ../src/main 1
+    run: ./main 1
     script: 
         - expect: "Best Schedule for Each Floor"
 
@@ -51,7 +51,7 @@
 
 
 - case_2:
-    run: ../src/main 2
+    run: ./main 2
     script: 
         - expect: "Best Schedule for Each Floor"
 
@@ -109,7 +109,7 @@
         - expect: _EOF_
 
 - case_3:
-    run: ../src/main 3
+    run: ./main 3
     script: 
         - expect: "Best Schedule for Each Floor"
 
