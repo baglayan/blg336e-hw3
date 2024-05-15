@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
@@ -223,11 +224,10 @@ vector<Item> read_item_data(string filepath)
     while (getline(items_file, line)) {
         istringstream iss(line);
         string name;
-        double price, value;
+        int price;
+        double value;
 
-        iss >> name >> price >> value;
-
-        if (iss) {
+        if (iss >> name >> price >> value) {
             items.emplace_back(name, price, value);
         } else {
             cerr << "Error reading line: " << line << '\n';
@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
     total_value = floor(total_value * 10 + 0.5f) / 10;
 
     cout << "Best Use of Budget\n";
-    cout << "Total Value --> " << total_value << endl;
+    cout << "Total Value --> " << fixed << setprecision(1) << total_value << endl;
     for (const auto &item : purchased_items) {
         cout << item.name << "\n";
     }
