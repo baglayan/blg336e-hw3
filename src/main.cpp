@@ -40,13 +40,16 @@ struct IntervalPair {
     }
 };
 
+// Custom hash function for IntervalPair
 struct IntervalPairHash {
     size_t operator()(const IntervalPair &ip) const
     {
+        // Calculate hash by XORing the hashes of start_time and end_time
         return hash<string>()(ip.start_time) ^ hash<string>()(ip.end_time);
     }
 };
 
+// Struct to store item data
 struct Item {
     string name;
     int price;
@@ -60,12 +63,14 @@ struct Item {
     }
 };
 
+// Struct to store room priorities
 struct RoomPriority {
     string floor_name;
     string room_no;
     int priority;
 };
 
+// Struct to store room time intervals
 struct RoomIntervals {
     string floor_name;
     string room_no;
@@ -74,10 +79,16 @@ struct RoomIntervals {
 
 /* START: WEIGHTED INTERVAL SCHEDULING (for each floor) */
 
+// Struct to store a schedule for a room
 struct Schedule {
     string floor_name;
     string room_no;
     vector<IntervalPair> intervals;
+
+    // This could've been implemented better.
+
+    // Currently, it is used to store the total priority gain for the floor
+    // despite the struct existing for each room.
     int total_priority;
 
     Schedule(const string &fn, const string &rn, const vector<IntervalPair> &iv, int tp)
@@ -91,19 +102,27 @@ struct Schedule {
 
 int find_latest_non_conflict(const vector<pair<IntervalPair, int>> &intervals, int n)
 {
+    // Iterate over the intervals in reverse order
     for (int i = n - 1; i >= 0; i--) {
+        // If the current interval does not conflict
+        // with the given interval, return its index
         if (intervals[i].first.end_time <= intervals[n].first.start_time) {
             return i;
         }
     }
+    // If no non-conflicting interval is found, return -1
     return -1;
 }
 
 vector<Schedule> weighted_interval_scheduling(vector<Schedule> schedules)
 {
+    // Map to store intervals for each floor
     unordered_map<string, vector<pair<IntervalPair, int>>> floor_intervals;
+
+    // Map to store room number for each interval
     unordered_map<string, unordered_map<IntervalPair, string, IntervalPairHash>> interval_to_room;
 
+    // Fill the maps with the given schedules
     for (const Schedule &schedule : schedules) {
         for (const auto &interval : schedule.intervals) {
             floor_intervals[schedule.floor_name].emplace_back(interval, schedule.total_priority);
@@ -111,55 +130,89 @@ vector<Schedule> weighted_interval_scheduling(vector<Schedule> schedules)
         }
     }
 
+    // Vector to store optimal schedules.
+    // This will be the return value
     vector<Schedule> optimal_schedules;
 
+    // Iterate over the intervals for each floor
     for (auto &pair : floor_intervals) {
+        // Name of the current floor
         const string &floor_name = pair.first;
+
+        // Intervals for the current floor
         auto &intervals_with_priority = pair.second;
 
+        // If there are no intervals for the current floor, skip
         int n = intervals_with_priority.size();
         if (n == 0)
             continue;
 
+        // Sort the intervals based on their end times
         sort(intervals_with_priority.begin(), intervals_with_priority.end(),
             [](const ::pair<IntervalPair, int> &a, const ::pair<IntervalPair, int> &b) {
                 return a.first.end_time < b.first.end_time;
             });
 
+        // Vector to store the maximum priority gain for each interval
         vector<int> dp(n);
         dp[0] = intervals_with_priority[0].second;
 
+        // Calculate the maximum priority gain for each interval
         for (int i = 1; i < n; i++) {
+            // Priority gain of the current interval
             int incl_prof = intervals_with_priority[i].second;
+
+            // Latest non-conflicting interval
             int l = find_latest_non_conflict(intervals_with_priority, i);
+
+            // If a non-conflicting interval is found,
             if (l != -1) {
+                // Add the priority gain of the latest non-conflicting interval
                 incl_prof += dp[l];
             }
+
+            // Store the maximum priority gain for the current interval.-
             dp[i] = max(incl_prof, dp[i - 1]);
         }
 
+        // Calculate the total priority gain for the floor
         int total_priority = dp[n - 1];
+
+        // Vector to store the best intervals
         vector<IntervalPair> best_intervals;
+
+        // Vector to store the room numbers for the best intervals
         vector<string> best_room_no;
 
+        // Iterate over the intervals in reverse order
         for (int i = n - 1; i >= 0;) {
+            // If the current interval has a different priority gain,
             if (i == 0 || dp[i] != dp[i - 1]) {
+                // Add the interval and its room number to the best vectors
                 best_intervals.push_back(intervals_with_priority[i].first);
                 best_room_no.push_back(interval_to_room[floor_name][intervals_with_priority[i].first]);
+
+                // Change i to the latest non-conflicting interval
                 i = find_latest_non_conflict(intervals_with_priority, i);
             } else {
+                // If the current interval has the same priority gain as the previous one,
                 i--;
             }
         }
 
+        // Reverse the vectors to get the intervals in order
         reverse(best_intervals.begin(), best_intervals.end());
         reverse(best_room_no.begin(), best_room_no.end());
 
+        // Map to store the intervals for each room
         unordered_map<string, vector<IntervalPair>> room_to_intervals;
+
+        // Fill the map with the best intervals
         for (size_t i = 0; i < best_intervals.size(); ++i) {
             room_to_intervals[best_room_no[i]].push_back(best_intervals[i]);
         }
 
+        // Fill up the optimal schedules vector
         for (const auto &entry : room_to_intervals) {
             const string &room_no = entry.first;
             const vector<IntervalPair> &intervals = entry.second;
@@ -177,22 +230,37 @@ vector<Schedule> weighted_interval_scheduling(vector<Schedule> schedules)
 // Function to select the most valuable items that can be purchased with a certain budget
 vector<Item> knapsack(const vector<Item> &items, int budget)
 {
+    // Number of items
     int n = items.size();
+
+    // Create a (n+1) by (budget+1) 2D DP table
+    // dp[i][w] represents the maximum value achievable with the first i items and a budget w
     vector<vector<double>> dp(n + 1, vector<double>(budget + 1, 0));
 
     for (int i = 1; i <= n; i++) {
+        // Price of the current item
         int price = items[i - 1].price;
+
+        // Value of the current item
         double value = items[i - 1].value;
+
+        // Loop through each possible budget
         for (int w = 0; w <= budget; w++) {
+            // If the item can fit in the budget,
             if (price <= w) {
+                // dp[i][w] is now the max. of not taking the item and taking the item
                 dp[i][w] = max(dp[i - 1][w], dp[i - 1][w - price] + value);
-            } else {
+            } else { // If the item can't fit in the current budget w
+                // Go on without including the current item
                 dp[i][w] = dp[i - 1][w];
             }
         }
     }
 
+    // Vector to store the selected items
     vector<Item> selected_items;
+
+    // Backtrack to find the selected items
     for (int i = n, w = budget; i > 0 && w > 0; i--) {
         if (dp[i][w] != dp[i - 1][w]) {
             selected_items.push_back(items[i - 1]);
@@ -207,10 +275,13 @@ vector<Item> knapsack(const vector<Item> &items, int budget)
 
 vector<Item> read_item_data(string filepath)
 {
+    // Vector to store read items
     vector<Item> items;
 
+    // Initialize items file stream
     ifstream items_file(filepath);
 
+    // Handle file not found
     if (!items_file) {
         cerr << "Items file not found!\n";
         return items;
@@ -218,8 +289,10 @@ vector<Item> read_item_data(string filepath)
 
     string line;
 
+    // Skip header (per given input format)
     getline(items_file, line);
 
+    // Read items from the file
     while (getline(items_file, line)) {
         istringstream iss(line);
         string name;
@@ -238,21 +311,25 @@ vector<Item> read_item_data(string filepath)
 
 vector<Schedule> read_room_data(string priorities_filepath, string room_time_intervals_filepath)
 {
+    // Initialize vectors to store room priorities and intervals
     vector<RoomPriority> room_priorities;
     vector<RoomIntervals> room_intervals;
     vector<Schedule> schedules;
 
+    // Initialize priorities file stream
     ifstream priorities_file(priorities_filepath);
 
+    // Handle file not found
     if (!priorities_file) {
         cerr << "Priorities file not found!\n";
         return schedules;
     }
-
     string line;
 
+    // Skip header (per given input format)
     getline(priorities_file, line);
 
+    // Read room priorities from the file
     while (getline(priorities_file, line)) {
         istringstream iss(line);
         string floor_name, room_no;
@@ -265,28 +342,35 @@ vector<Schedule> read_room_data(string priorities_filepath, string room_time_int
         }
     }
 
+    // Initialize intervals file stream
     ifstream intervals_file(room_time_intervals_filepath);
 
+    // Handle file not found
     if (!intervals_file) {
         cerr << "Room time intervals file not found!\n";
         return schedules;
     }
 
+    // Skip header (per given input format)
     getline(intervals_file, line);
 
+    // Read room time intervals from the file
     while (getline(intervals_file, line)) {
         istringstream iss(line);
         string floor_name, room_no, start, end;
 
         if (iss >> floor_name >> room_no >> start >> end) {
+            // See if currently read room has any stored intervals
             auto it = find_if(room_intervals.begin(), room_intervals.end(),
                 [&](const RoomIntervals &ri) {
                     return ri.floor_name == floor_name && ri.room_no == room_no;
                 });
 
+            // If intervals are found, add the new interval to the existing intervals
             if (it != room_intervals.end()) {
                 it->intervals.emplace_back(start, end);
             } else {
+                // Otherwise, create a new RoomIntervals object and add it to the room_intervals vector
                 room_intervals.push_back({ floor_name, room_no, { { start, end } } });
             }
         } else {
@@ -294,17 +378,22 @@ vector<Schedule> read_room_data(string priorities_filepath, string room_time_int
         }
     }
 
+    // Fill schedules vector with the all the intervals for each room
     for (const auto &rp : room_priorities) {
+        // Find the intervals for the current room
         auto it = find_if(room_intervals.begin(), room_intervals.end(),
             [&](const RoomIntervals &ri) {
                 return ri.floor_name == rp.floor_name && ri.room_no == rp.room_no;
             });
 
         vector<IntervalPair> intervals;
+
+        // If intervals are found, assign them to the intervals vector
         if (it != room_intervals.end()) {
             intervals = it->intervals;
         }
 
+        // Add the room schedule to the schedules vector
         schedules.emplace_back(rp.floor_name, rp.room_no, intervals, rp.priority);
     }
 
@@ -336,6 +425,8 @@ int main(int argc, char *argv[])
 
     // Find the most valuable items that can be purchased with the total budget
     vector<Item> purchased_items = knapsack(items, total_budget);
+
+    /* Following operations are for fitting the data to expected output format */
 
     // Create a mapping from floors to their full schedules
     unordered_map<string, vector<Schedule>> floor_to_schedules;
