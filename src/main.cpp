@@ -24,8 +24,7 @@
 
 using namespace std;
 
-class IntervalPair {
-public:
+struct IntervalPair {
     string start_time;
     string end_time;
 
@@ -314,44 +313,59 @@ vector<Schedule> read_room_data(string priorities_filepath, string room_time_int
 
 int main(int argc, char *argv[])
 {
+    // Check for correct number of arguments
     if (argc != 2) {
         cout << "Usage: " << argv[0] << " <case_no>\n";
         return 1;
     }
 
+    // To construct input file paths
     string case_no = argv[1];
     string case_name = "case_" + case_no;
     string path = "./inputs/" + case_name;
 
+    // Total budget for the items
     int total_budget = 200000;
 
+    // Read data from files
     vector<Item> items = read_item_data(path + "/items.txt");
     vector<Schedule> schedules = read_room_data(path + "/priority.txt", path + "/room_time_intervals.txt");
 
+    // Find an optimal schedule for each floor
     vector<Schedule> optimal_schedules = weighted_interval_scheduling(schedules);
+
+    // Find the most valuable items that can be purchased with the total budget
     vector<Item> purchased_items = knapsack(items, total_budget);
 
+    // Create a mapping from floors to their full schedules
     unordered_map<string, vector<Schedule>> floor_to_schedules;
     for (const auto &schedule : optimal_schedules) {
         floor_to_schedules[schedule.floor_name].push_back(schedule);
     }
 
+    // Create a set of unique floors based on their names
     unordered_set<string> floors_set;
     for (const auto &schedule : schedules) {
         floors_set.insert(schedule.floor_name);
     }
 
+    // Sort floor list based on floor names
     vector<string> floor_list(floors_set.begin(), floors_set.end());
     sort(floor_list.begin(), floor_list.end());
 
     cout << "Best Schedule for Each Floor\n";
 
+    // Print the optimal schedule for each floor
     for (const auto &floor_name : floor_list) {
+        // Skip floors that do not have any schedules
         if (floor_to_schedules.find(floor_name) == floor_to_schedules.end()) {
             continue;
         }
+
+        // Get the schedules for the current floor
         const vector<Schedule> &schedules = floor_to_schedules[floor_name];
 
+        // Find the total priority gain for the current floor
         auto it = find_if(schedules.begin(), schedules.end(),
             [&floor_name](const Schedule &schedule) {
                 return schedule.floor_name == floor_name;
@@ -361,6 +375,7 @@ int main(int argc, char *argv[])
 
         cout << floor_name << " --> Priority Gain: " << total_priority_gain << endl;
 
+        // Sort the intervals based on their start times
         vector<pair<string, IntervalPair>> floor_intervals;
         for (const auto &schedule : schedules) {
             for (const auto &interval : schedule.intervals) {
@@ -372,22 +387,27 @@ int main(int argc, char *argv[])
             return a.second.start_time < b.second.start_time;
         });
 
+        // Print the intervals for the current floor
         for (const auto &entry : floor_intervals) {
             const string &room_no = entry.first;
             const IntervalPair &interval = entry.second;
             cout << floor_name << "\t" << room_no << "\t" << interval.start_time << "\t" << interval.end_time << endl;
         }
 
+        // Print an empty line between floors
         cout << endl;
     }
 
+    // Find the total value of the purchased items
     double total_value = 0;
     for (const auto &item : purchased_items) {
         total_value += item.value;
     }
 
+    // Round the total value to one decimal place
     total_value = floor(total_value * 10 + 0.5f) / 10;
 
+    // Print the best use of the budget
     cout << "Best Use of Budget\n";
     cout << "Total Value --> " << fixed << setprecision(1) << total_value << endl;
     for (const auto &item : purchased_items) {
